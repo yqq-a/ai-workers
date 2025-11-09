@@ -27,7 +27,7 @@
 	 */
 
 	"vars": {
-		"DEEPSEEK_API_KEY": "",
+		"DEEPSEEK_API_KEY": "d4cc9350a96",
 		"ENVIRONMENT": "development"
 	}
 	/**
