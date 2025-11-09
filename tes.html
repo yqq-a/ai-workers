@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>转账记录查询</title>
+		<script src="https://cdn.jsdelivr.net/npm/@apollo/client@3.7.0"></script>
+		<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.min.js"></script>
+	</head>
+	<body>
+		<button onclick="connectWallet()">连接钱包并查询转账记录</button>
+		<div id="result"></div>
+
+		<script>
+			// Apollo Client 配置
+			const client = new ApolloClient({
+				uri: 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2',
+				cache: new InMemoryCache(),
+			});
+
+			// GraphQL 查询
+			const GET_TRANSFERS = gql`
+				query GetTransfers($userAddress: String!) {
+					transfers(where: { or: [{ from: $userAddress }, { to: $userAddress }] }, orderBy: timestamp, orderDirection: desc, first: 50) {
+						id
+						from
+						to
+						value
+						transactionHash
+						timestamp
+					}
+				}
+			`;
+
+			async function connectWallet() {
+				if (typeof window.ethereum === 'undefined') {
+					alert('请安装 MetaMask!');
+					return;
+				}
+
+				try {
+					const accounts = await window.ethereum.request({
+						method: 'eth_requestAccounts',
+					});
+					const userAddress = accounts[0];
+
+					document.getElementById('result').innerHTML = `查询中... 地址: ${userAddress}`;
+
+					// 查询转账记录
+					const result = await client.query({
+						query: GET_TRANSFERS,
+						variables: { userAddress: userAddress.toLowerCase() },
+					});
+
+					displayResults(result.data.transfers);
+				} catch (error) {
+					console.error('错误:', error);
+					document.getElementById('result').innerHTML = '查询失败';
+				}
+			}
+
+			function displayResults(transfers) {
+				const resultDiv = document.getElementById('result');
+				if (transfers.length === 0) {
+					resultDiv.innerHTML = '未找到转账记录';
+					return;
+				}
+
+				let html = '<h3>最近转账记录:</h3><ul>';
+				transfers.forEach((transfer) => {
+					const date = new Date(transfer.timestamp * 1000);
+					html += `
+                    <li>
+                        ${date.toLocaleString()} | 
+                        从: ${transfer.from.slice(0, 8)}... | 
+                        到: ${transfer.to ? transfer.to.slice(0, 8) + '...' : '合约创建'} | 
+                        金额: ${parseFloat(transfer.value).toFixed(4)} ETH
+                    </li>
+                `;
+				});
+				html += '</ul>';
+				resultDiv.innerHTML = html;
+			}
+		</script>
+	</body>
+</html>
